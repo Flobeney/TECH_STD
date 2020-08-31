@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -8,8 +9,13 @@ using System.Threading.Tasks;
 namespace ex_01_format_bmp {
     class Program {
         static void Main(string[] args) {
+            //Constantes 
+            const string PATH_IMG_BASE = "../../../logo.bmp";
+            const string IMG_RES = "res.bmp";
+
             //Variables
-            Bitmap imgBase = new Bitmap("../../../logo.bmp");
+            BinaryReader reader;
+            Bitmap imgBase = new Bitmap(PATH_IMG_BASE);
             Bitmap imgRes = new Bitmap(imgBase.Width, imgBase.Height);
 
             //Parcourir l'image
@@ -21,9 +27,32 @@ namespace ex_01_format_bmp {
             }
 
             //Sauver l'image
-            imgRes.Save("res.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+            imgRes.Save(IMG_RES, System.Drawing.Imaging.ImageFormat.Bmp);
 
-            Console.WriteLine("Traitement terminé");
+            //Fermer les images
+            imgBase.Dispose();
+            imgRes.Dispose();
+
+            Console.WriteLine("Traitement de l'image terminé");
+
+            //Lire les infos du header
+            reader = new BinaryReader(File.Open(PATH_IMG_BASE, FileMode.Open));
+
+            string bfType;
+            int bfSize;
+            Byte[] currentBytes;
+
+            currentBytes = reader.ReadBytes(2);
+            bfType = Encoding.ASCII.GetString(currentBytes);
+
+            currentBytes = reader.ReadBytes(4);
+            bfSize = BitConverter.ToInt32(currentBytes, 0);
+
+            Console.WriteLine(bfType);
+            Console.WriteLine(bfSize);
+
+            //Fermer le reader
+            reader.Close();
         }
     }
 }
