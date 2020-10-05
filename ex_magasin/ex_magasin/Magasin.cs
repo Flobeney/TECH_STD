@@ -16,8 +16,8 @@ namespace ex_magasin {
         private const int NB_CUSTOMER = 15;
         private const int V_CUSTOMER = 200;
         private const int SPACE_BETWEEN_CHECKOUT = 15;
-        private const int TIME_MIN_TO_STAY = 15;
-        private const int TIME_MAX_TO_STAY = 45;
+        private const int TIME_MIN_TO_STAY = 5;
+        private const int TIME_MAX_TO_STAY = 20;
 
         //Champs
         Bitmap bmp = null;

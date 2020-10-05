@@ -22,7 +22,7 @@ namespace ex_magasin {
         SizeF size;
         Stopwatch sw;
         Brush color;
-        long timeLeft;
+        Timer timeLeft;
 
         //Propriétés
         PointF currentLocation {
@@ -53,9 +53,13 @@ namespace ex_magasin {
             //Initialiser les valeurs
             startLocation = pStartLocation;
             speed = pSpeed;
-            timeLeft = pTimeLeft * 1000; // Convertir le temps en ms
             color = Brushes.Gray;
             size = new SizeF(SIZE_SPRITE, SIZE_SPRITE);
+            //Timer pour le temps restant
+            timeLeft = new Timer();
+            timeLeft.Interval = pTimeLeft * 1000;
+            timeLeft.Enabled = true;
+            timeLeft.Tick += new EventHandler(OnTick);
         }
 
         /// <summary>
@@ -65,7 +69,7 @@ namespace ex_magasin {
         /// <param name="e"></param>
         public void Paint(object sender, PaintEventArgs e) {
             e.Graphics.FillEllipse(color, new RectangleF(currentLocation, size));
-            Console.WriteLine($"timeLeft: {timeLeft}");
+            //Console.WriteLine($"timeLeft: {timeLeft}");
         }
 
         /// <summary>
@@ -120,6 +124,15 @@ namespace ex_magasin {
             }
             //Stopper et remettre à 0 le timer
             sw.Restart();
+        }
+
+        /// <summary>
+        /// Pour chaque Tick du timer
+        /// </summary>
+        protected void OnTick(object sender, EventArgs e) {
+            Console.WriteLine("time end");
+            color = Brushes.Blue;
+            timeLeft.Enabled = false;
         }
     }
 }
