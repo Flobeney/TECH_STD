@@ -13,7 +13,7 @@ namespace ex_magasin {
     class Magasin : Control {
         //Constantes
         private const int FPS_INTERVAL = 8;
-        private const int NB_CUSTOMER = 15;
+        private const int NB_CUSTOMER = 5;
         private const int V_CUSTOMER = 200;
         private const int SPACE_BETWEEN_CHECKOUT = 15;
         private const int TIME_MIN_TO_STAY = 5;
@@ -24,11 +24,13 @@ namespace ex_magasin {
         Graphics g = null;
         Timer fps;
         Random rnd;
+        List<Checkout> checkouts;
 
         /// <summary>
         /// Constructeur
         /// </summary>
         public Magasin() : base() {
+            checkouts = new List<Checkout>();
             //Random
             rnd = new Random();
             //Timer
@@ -49,6 +51,7 @@ namespace ex_magasin {
                     rnd.Next(TIME_MIN_TO_STAY, TIME_MAX_TO_STAY)
                 );
                 Paint += currentCustomer.Paint;
+                currentCustomer.TimeEnded += c_TimeEnded;
             }
             //Caisses
             //Position Y des caisses
@@ -59,9 +62,12 @@ namespace ex_magasin {
                     new PointF(
                         (Properties.Settings.Default.SIZE_CHECKOUT.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
                         checkoutY
-                    )
+                    ),
+                    //Ouvrir la 1ère caisse
+                    i == 0
                 );
                 Paint += currentCheckout.Paint;
+                checkouts.Add(currentCheckout);
             }
         }
 
@@ -91,6 +97,20 @@ namespace ex_magasin {
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
             Invalidate(true);
+        }
+
+        /// <summary>
+        /// Event lorsque le client a fini ses courses
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void c_TimeEnded(object sender, EventArgs e) {
+            //Récupérer le client
+            Customer currentCustomer = sender as Customer;
+            //Récupérer une caisse ouverte
+            Checkout currentCheckout = checkouts.Find(x => x.IsOpen);
+            //Faire aller le client vers la caisse ouverte
+            currentCustomer.GoTo(currentCheckout);
         }
     }
 }
