@@ -24,12 +24,14 @@ namespace ex_magasin {
         Graphics g = null;
         Timer fps;
         Random rnd;
+        List<Customer> customers;
         List<Checkout> checkouts;
 
         /// <summary>
         /// Constructeur
         /// </summary>
         public Magasin() : base() {
+            customers = new List<Customer>();
             checkouts = new List<Checkout>();
             //Random
             rnd = new Random();
@@ -51,22 +53,24 @@ namespace ex_magasin {
                     rnd.Next(TIME_MIN_TO_STAY, TIME_MAX_TO_STAY)
                 );
                 Paint += currentCustomer.Paint;
-                currentCustomer.TimeEnded += c_TimeEnded;
+                currentCustomer.TimeEnded += HandlerTimeEnded;
+                customers.Add(currentCustomer);
             }
             //Caisses
             //Position Y des caisses
-            int checkoutY = Properties.Settings.Default.SIZE_FORM.Height - Properties.Settings.Default.SIZE_CHECKOUT.Height;
+            int checkoutY = Properties.Settings.Default.SIZE_FORM.Height - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height;
             //Ajouter autant de caisse que l'espace disponible permet
-            for (int i = 0; i < Properties.Settings.Default.SIZE_FORM.Width / Properties.Settings.Default.SIZE_CHECKOUT.Width; i++) {
+            for (int i = 0; i < (Properties.Settings.Default.SIZE_FORM.Width - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width) / Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width; i++) {
                 Checkout currentCheckout = new Checkout(
                     new PointF(
-                        (Properties.Settings.Default.SIZE_CHECKOUT.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
+                        10 + (Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
                         checkoutY
                     ),
                     //Ouvrir la 1ère caisse
                     i == 0
                 );
                 Paint += currentCheckout.Paint;
+                currentCheckout.CustomerDoneAtCheckout += HandlerCustomerDoneAtCheckout;
                 checkouts.Add(currentCheckout);
             }
         }
@@ -102,15 +106,22 @@ namespace ex_magasin {
         /// <summary>
         /// Event lorsque le client a fini ses courses
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void c_TimeEnded(object sender, EventArgs e) {
+        private void HandlerTimeEnded(object sender, EventArgs e) {
             //Récupérer le client
             Customer currentCustomer = sender as Customer;
             //Récupérer une caisse ouverte
             Checkout currentCheckout = checkouts.Find(x => x.IsOpen);
             //Faire aller le client vers la caisse ouverte
             currentCustomer.GoTo(currentCheckout);
+        }
+
+        /// <summary>
+        /// Event lorsque le client a fini ses courses
+        /// </summary>
+        /// <param name="e">Argument</param>
+        private void HandlerCustomerDoneAtCheckout(object sender, CustomerDoneAtCheckoutEventArgs e) {
+            Paint -= e.customer.Paint;
+            customers.Remove(e.customer);
         }
     }
 }

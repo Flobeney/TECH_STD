@@ -8,18 +8,23 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ex_magasin {
+    public enum Status {
+        SHOPPING,
+        GOING_TO_CHECKOUT,
+        WAITING_AT_CHECKOUT
+    };
+
     /// <summary>
     /// Représentation d'un client
     /// </summary>
     class Customer {
         //Constantes
-        const int SIZE_SPRITE = 25;
         const int OFFSET_CLIENT = 5;
         const int SPEED_GOTO_CHECKOUT = 5;
         readonly Brush BASE_COLOR = Brushes.Gray;
         readonly Brush TIME_END_COLOR = Brushes.Blue;
 
-        //Gestion d'événement
+        //Gestionnaire d'événement
         public event EventHandler TimeEnded;
 
         //Champs
@@ -30,8 +35,16 @@ namespace ex_magasin {
         Brush color;
         Timer timeLeft;
         Checkout checkoutToGo;
+        Status statusCustomer;
 
         //Propriétés
+        public int TimeToWait { get; private set; }
+        public int PosInWaitingQueue { get; set; }
+
+        //Propriétés calculées
+        /// <summary>
+        /// Position du client en fonction du temps écoulé
+        /// </summary>
         PointF NewLocation {
             get {
                 return new PointF(
@@ -40,18 +53,29 @@ namespace ex_magasin {
                 );
             }
         }
+        /// <summary>
+        /// Position du client en tenant compte des rebonds sur les bords
+        /// </summary>
         PointF CurrentLocation {
             get {
                 //Position qui sera retournée
-                PointF res = NewLocation;
+                PointF res;
+                if (statusCustomer == Status.WAITING_AT_CHECKOUT) {
+                    res = checkoutToGo.GetNextWaitingLocation(this);
+                } else {
+                    res = NewLocation;
 
-                //Gestion des rebonds
-                HandleBounce(res);
+                    //Si le client fait son shopping
+                    if(statusCustomer == Status.SHOPPING) {
+                        //Gestion des rebonds
+                        HandleBounce(res);
+                    }
 
-                //Si la caisse est atteinte
-                if (IsCheckoutReached(res)) {
-                    Console.WriteLine("reached");
-                    checkoutToGo.AddCustomer(this);
+                    //Si la caisse est atteinte
+                    if (statusCustomer == Status.GOING_TO_CHECKOUT && IsCheckoutReached(res)) {
+                        statusCustomer = Status.WAITING_AT_CHECKOUT;
+                        checkoutToGo.AddCustomer(this);
+                    }
                 }
 
                 return res;
@@ -72,10 +96,12 @@ namespace ex_magasin {
             startLocation = pStartLocation;
             speed = pSpeed;
             color = BASE_COLOR;
-            size = new SizeF(SIZE_SPRITE, SIZE_SPRITE);
+            size = Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER;
+            statusCustomer = Status.SHOPPING;
             //Timer pour le temps restant
+            TimeToWait = pTimeLeft * 1000;
             timeLeft = new Timer();
-            timeLeft.Interval = pTimeLeft * 1000;
+            timeLeft.Interval = TimeToWait;
             timeLeft.Enabled = true;
             timeLeft.Tick += new EventHandler(OnTick);
         }
@@ -99,12 +125,13 @@ namespace ex_magasin {
         /// <param name="checkout">La caisse vers laquelle se diriger</param>
         public void GoTo(Checkout checkout) {
             checkoutToGo = checkout;
+            statusCustomer = Status.GOING_TO_CHECKOUT;
 
             //Calculer la nouvelle position
             PointF newLocation = NewLocation;
             GoTo(newLocation, new PointF(
-                (checkout.Location.X - newLocation.X) / SPEED_GOTO_CHECKOUT,
-                (checkout.Location.Y - newLocation.Y) / SPEED_GOTO_CHECKOUT
+                (checkout.LocationWaitingQueue.X - newLocation.X) / SPEED_GOTO_CHECKOUT,
+                (checkout.LocationWaitingQueue.Y - newLocation.Y) / SPEED_GOTO_CHECKOUT
             ));
         }
 
@@ -117,9 +144,12 @@ namespace ex_magasin {
             bool res = false;
 
             if(checkoutToGo != null) {
-                RectangleF customer = new RectangleF(newLocation, size);
+                Rectangle customer = new Rectangle(
+                    new Point((int)newLocation.X, (int)newLocation.Y), 
+                    new Size((int)size.Width, (int)size.Height)
+                );
                 //Déterminer si le client entre en contact avec la caisse
-                res = checkoutToGo.RectToDraw.IntersectsWith(customer);
+                res = checkoutToGo.WaitingQueueToDraw.IntersectsWith(customer);
             }
 
             return res;
@@ -128,8 +158,6 @@ namespace ex_magasin {
         /// <summary>
         /// Dessin du sprite
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         public void Paint(object sender, PaintEventArgs e) {
             e.Graphics.FillEllipse(color, new RectangleF(CurrentLocation, size));
         }
@@ -154,7 +182,7 @@ namespace ex_magasin {
                 Bounce(newLocation);
             }
             //Bas
-            if (newLocation.Y + size.Height > Properties.Settings.Default.SIZE_FORM.Height) {
+            if (newLocation.Y + size.Height > Properties.Settings.Default.SIZE_FORM.Height - Properties.Settings.Default.SIZE_WAITING_QUEUE.Height - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height) {
                 //Éviter les blocages contre le bord
                 newLocation.Y -= OFFSET_CLIENT;
                 //Faire le rebond
@@ -192,7 +220,6 @@ namespace ex_magasin {
         /// Pour chaque Tick du timer
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
-            Console.WriteLine("time end");
             color = TIME_END_COLOR;
             timeLeft.Enabled = false;
             //Appeler l'event pour dire que le client a fini ses courses
@@ -202,7 +229,7 @@ namespace ex_magasin {
         /// <summary>
         /// Invocation d'event
         /// </summary>
-        /// <param name="e">Argument des events</param>
+        /// <param name="e">Argument de l'event</param>
         protected virtual void OnTimeEnded(EventArgs e) {
             //Invoquer l'event si TimeEnded n'est pas null
             TimeEnded?.Invoke(this, e);

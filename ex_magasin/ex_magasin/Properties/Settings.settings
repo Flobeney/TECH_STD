@@ -3,10 +3,13 @@
   <Profiles />
   <Settings>
     <Setting Name="SIZE_FORM" Type="System.Drawing.Size" Scope="User">
-      <Value Profile="(Default)">800, 500</Value>
+      <Value Profile="(Default)">1000, 700</Value>
     </Setting>
-    <Setting Name="SIZE_CHECKOUT" Type="System.Drawing.Size" Scope="User">
+    <Setting Name="SIZE_CHECKOUT_CUSTOMER" Type="System.Drawing.Size" Scope="User">
       <Value Profile="(Default)">30, 30</Value>
+    </Setting>
+    <Setting Name="SIZE_WAITING_QUEUE" Type="System.Drawing.Size" Scope="User">
+      <Value Profile="(Default)">30, 110</Value>
     </Setting>
   </Settings>
 </SettingsFile>

@@ -12,7 +12,7 @@ namespace ex_magasin.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.7.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.3.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -25,7 +25,7 @@ namespace ex_magasin.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("800, 500")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1000, 700")]
         public global::System.Drawing.Size SIZE_FORM {
             get {
                 return ((global::System.Drawing.Size)(this["SIZE_FORM"]));
@@ -38,12 +38,24 @@ namespace ex_magasin.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("30, 30")]
-        public global::System.Drawing.Size SIZE_CHECKOUT {
+        public global::System.Drawing.Size SIZE_CHECKOUT_CUSTOMER {
             get {
-                return ((global::System.Drawing.Size)(this["SIZE_CHECKOUT"]));
+                return ((global::System.Drawing.Size)(this["SIZE_CHECKOUT_CUSTOMER"]));
             }
             set {
-                this["SIZE_CHECKOUT"] = value;
+                this["SIZE_CHECKOUT_CUSTOMER"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("30, 110")]
+        public global::System.Drawing.Size SIZE_WAITING_QUEUE {
+            get {
+                return ((global::System.Drawing.Size)(this["SIZE_WAITING_QUEUE"]));
+            }
+            set {
+                this["SIZE_WAITING_QUEUE"] = value;
             }
         }
     }
