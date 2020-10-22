@@ -26,3 +26,4 @@
 
 * Affichage du temps d'attente restant sur le client lorsqu'il est à la caisse
 * Ajout d'un client après un certain temps
+* Indication qu'une caisse est pleine et ne peut accueillir plus de clients

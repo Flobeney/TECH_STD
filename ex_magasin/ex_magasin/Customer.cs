@@ -12,7 +12,7 @@ namespace ex_magasin {
         SHOPPING,
         GOING_TO_CHECKOUT,
         WAITING_AT_CHECKOUT,
-        AT_CHECKOUT
+        AT_CHECKOUT,
     };
 
     /// <summary>
@@ -24,6 +24,7 @@ namespace ex_magasin {
         const int SPEED_GOTO_CHECKOUT = 5;
         readonly Brush BASE_COLOR = Brushes.Gray;
         readonly Brush TIME_END_COLOR = Brushes.Blue;
+        readonly Brush WAITING_ANOTHER_CHECKOUT_COLOR = Brushes.Red;
         readonly Brush TEXT_COLOR = Brushes.Black;
         readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
 
@@ -33,16 +34,17 @@ namespace ex_magasin {
         //Champs
         PointF startLocation;
         PointF speed;
+        PointF baseSpeed;
         SizeF size;
         Stopwatch sw;
         Brush color;
         Timer tmr;
-        Checkout checkoutToGo;
-        Status statusCustomer;
         int timeToWait;
 
         //Propriétés
         public int TimeToWaitAtCheckout { get; private set; }
+        public Checkout CheckoutToGo { get; private set; }
+        public Status StatusCustomer { get; private set; }
 
         //Propriétés calculées
         /// <summary>
@@ -63,21 +65,21 @@ namespace ex_magasin {
             get {
                 //Position qui sera retournée
                 PointF res;
-                if (statusCustomer == Status.WAITING_AT_CHECKOUT || statusCustomer == Status.AT_CHECKOUT) {
-                    res = checkoutToGo.GetNextWaitingLocation(this);
+                if (StatusCustomer == Status.WAITING_AT_CHECKOUT || StatusCustomer == Status.AT_CHECKOUT) {
+                    res = CheckoutToGo.GetNextWaitingLocation(this);
                 } else {
                     res = NewLocation;
 
-                    //Si le client fait son shopping
-                    if(statusCustomer == Status.SHOPPING) {
+                    //Si le client fait son shopping ou attend l'ouverture d'une autre caisse
+                    if(StatusCustomer == Status.SHOPPING) {
                         //Gestion des rebonds
                         HandleBounce(res);
                     }
 
                     //Si la caisse est atteinte
-                    if (statusCustomer == Status.GOING_TO_CHECKOUT && IsCheckoutReached(res)) {
-                        statusCustomer = Status.WAITING_AT_CHECKOUT;
-                        checkoutToGo.AddCustomer(this);
+                    if (StatusCustomer == Status.GOING_TO_CHECKOUT && IsCheckoutReached(res)) {
+                        StatusCustomer = Status.WAITING_AT_CHECKOUT;
+                        CheckoutToGo.AddCustomer(this);
                     }
                 }
 
@@ -98,9 +100,10 @@ namespace ex_magasin {
             //Initialiser les valeurs
             startLocation = pStartLocation;
             speed = pSpeed;
+            baseSpeed = pSpeed;
             color = BASE_COLOR;
             size = Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER;
-            statusCustomer = Status.SHOPPING;
+            StatusCustomer = Status.SHOPPING;
             //Timer pour le temps à faire du shopping
             timeToWait = pTmr;
             TimeToWaitAtCheckout = pTmr / 2;
@@ -128,8 +131,9 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="checkout">La caisse vers laquelle se diriger</param>
         public void GoTo(Checkout checkout) {
-            checkoutToGo = checkout;
-            statusCustomer = Status.GOING_TO_CHECKOUT;
+            CheckoutToGo = checkout;
+            StatusCustomer = Status.GOING_TO_CHECKOUT;
+            color = TIME_END_COLOR;
 
             //Calculer la nouvelle position
             PointF newLocation = NewLocation;
@@ -147,13 +151,13 @@ namespace ex_magasin {
         private bool IsCheckoutReached(PointF newLocation) {
             bool res = false;
 
-            if(checkoutToGo != null) {
+            if(CheckoutToGo != null) {
                 Rectangle customer = new Rectangle(
                     new Point((int)newLocation.X, (int)newLocation.Y), 
                     new Size((int)size.Width, (int)size.Height)
                 );
                 //Déterminer si le client entre en contact avec la caisse
-                res = checkoutToGo.WaitingQueueToDraw.IntersectsWith(customer);
+                res = CheckoutToGo.WaitingQueueToDraw.IntersectsWith(customer);
             }
 
             return res;
@@ -166,7 +170,7 @@ namespace ex_magasin {
             //Dessiner le client
             e.Graphics.FillEllipse(color, new RectangleF(CurrentLocation, size));
             //Si le client est à la caisse, indiquer le temps d'attente restant
-            if(statusCustomer == Status.AT_CHECKOUT) {
+            if(StatusCustomer == Status.AT_CHECKOUT) {
                 e.Graphics.DrawString(
                     $"{TimeToWaitAtCheckout - sw.Elapsed.Seconds}", 
                     FONT_TEXT, TEXT_COLOR, 
@@ -179,9 +183,25 @@ namespace ex_magasin {
         /// Le client attend à la caisse
         /// </summary>
         public void CustomerWaitAtCheckout() {
-            statusCustomer = Status.AT_CHECKOUT;
+            StatusCustomer = Status.AT_CHECKOUT;
             tmr.Interval = 1000;
             tmr.Enabled = true;
+            sw.Restart();
+        }
+
+        /// <summary>
+        /// Aucune caisse disponible pour le client
+        /// </summary>
+        public void CheckoutFull() {
+            //La caisse n'est pas disponible
+            CheckoutToGo = null;
+            //Couleur
+            color = WAITING_ANOTHER_CHECKOUT_COLOR;
+            //Status
+            StatusCustomer = Status.SHOPPING;
+            //Vitesse et direction
+            startLocation = NewLocation;
+            speed = baseSpeed;
             sw.Restart();
         }
 
@@ -243,8 +263,7 @@ namespace ex_magasin {
         /// Pour chaque Tick du timer
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
-            if(statusCustomer != Status.AT_CHECKOUT) {
-                color = TIME_END_COLOR;
+            if(StatusCustomer != Status.AT_CHECKOUT) {
                 tmr.Enabled = false;
                 //Appeler l'event pour dire que le client a fini ses courses
                 OnTimeEnded(EventArgs.Empty);
@@ -252,10 +271,10 @@ namespace ex_magasin {
         }
 
         /// <summary>
-        /// Invocation d'event
+        /// Invocation d'event 
         /// </summary>
         /// <param name="e">Argument de l'event</param>
-        protected virtual void OnTimeEnded(EventArgs e) {
+        protected void OnTimeEnded(EventArgs e) {
             //Invoquer l'event si TimeEnded n'est pas null
             TimeEnded?.Invoke(this, e);
         }

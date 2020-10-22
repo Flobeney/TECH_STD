@@ -14,12 +14,15 @@ namespace ex_magasin {
     class Checkout {
         //Constantes
         const int OFFEST_WAITING = 10;
+        const int NB_MAX_CUSTOMER = 3;
         readonly Brush COLOR_CLOSE = Brushes.Red;
         readonly Brush COLOR_OPEN = Brushes.Green;
         readonly Pen COLOR_WAITING_QUEUE = Pens.Black;
 
         //Gestionnaire d'événement
         public event EventHandler<CustomerDoneAtCheckoutEventArgs> CustomerDoneAtCheckout;
+        public event EventHandler CheckoutFull;
+        public event EventHandler CheckoutAvailable;
 
         //Propriétés
         private PointF Location { get; set; }
@@ -29,6 +32,12 @@ namespace ex_magasin {
         public Rectangle WaitingQueueToDraw { get; private set; }
         private Timer TmrWait { get; set; }
         private List<Customer> CustomersWaiting { get; set; }
+        //Propriétés calculées
+        public bool IsAtMax {
+            get {
+                return CustomersWaiting.Count >= NB_MAX_CUSTOMER;
+            }
+        }
 
         /// <summary>
         /// Constructeur désigné
@@ -65,6 +74,10 @@ namespace ex_magasin {
             //Premier client
             if (CustomersWaiting.Count == 1) {
                 SetTimer();
+            }
+            //Caisse pleine
+            if(CustomersWaiting.Count >= NB_MAX_CUSTOMER) {
+                OnCheckoutFull(EventArgs.Empty);
             }
         }
 
@@ -107,21 +120,43 @@ namespace ex_magasin {
             OnCustomerDoneAtCheckout(new CustomerDoneAtCheckoutEventArgs(CustomersWaiting[0]));
             //Enlever le client de la liste
             CustomersWaiting.RemoveAt(0);
-
+            //Lancer le prochain timer pour le client suivant, sinon le couper
             if(CustomersWaiting.Count > 0) {
                 SetTimer();
             } else {
                 TmrWait.Enabled = false;
             }
+            if (!IsAtMax) {
+                //Indiquer que la caisse a une/des place(s) disponible(s)
+                OnCheckoutAvailable(EventArgs.Empty);
+            }
         }
 
         /// <summary>
-        /// Invocation d'event
+        /// Invocation d'event lorsque le client a fini de payer
         /// </summary>
         /// <param name="e">Argument de l'event</param>
-        protected virtual void OnCustomerDoneAtCheckout(CustomerDoneAtCheckoutEventArgs e) {
-            //Invoquer l'event si TimeEnded n'est pas null
+        protected void OnCustomerDoneAtCheckout(CustomerDoneAtCheckoutEventArgs e) {
+            //Invoquer l'event si CustomerDoneAtCheckout n'est pas null
             CustomerDoneAtCheckout?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// Invocation d'event lorsque la caisse est pleine
+        /// </summary>
+        /// <param name="e">Argument de l'event</param>
+        protected void OnCheckoutFull(EventArgs e) {
+            //Invoquer l'event si CheckoutFull n'est pas null
+            CheckoutFull?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// Invocation d'event lorsque une/des place(s) dans la file d'attente de la caisse est/sont disponible(s)
+        /// </summary>
+        /// <param name="e">Argument de l'event</param>
+        protected void OnCheckoutAvailable(EventArgs e) {
+            //Invoquer l'event si CheckoutAvailable n'est pas null
+            CheckoutAvailable?.Invoke(this, e);
         }
     }
 }
