@@ -25,3 +25,4 @@
 ## 22.10.2020
 
 * Affichage du temps d'attente restant sur le client lorsqu'il est à la caisse
+* Ajout d'un client après un certain temps

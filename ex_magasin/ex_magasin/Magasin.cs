@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -18,11 +19,13 @@ namespace ex_magasin {
         private const int SPACE_BETWEEN_CHECKOUT = 15;
         private const int TIME_MIN_TO_STAY = 5;
         private const int TIME_MAX_TO_STAY = 20;
+        private const int TIME_SECOND_BEFORE_ADD_CUSTOMER = 5;
 
         //Champs
         Bitmap bmp = null;
         Graphics g = null;
         Timer fps;
+        Stopwatch newClient;
         Random rnd;
         List<Customer> customers;
         List<Checkout> checkouts;
@@ -35,6 +38,9 @@ namespace ex_magasin {
             checkouts = new List<Checkout>();
             //Random
             rnd = new Random();
+            //Stopwatch
+            newClient = new Stopwatch();
+            newClient.Start();
             //Timer
             fps = new Timer();
             fps.Interval = FPS_INTERVAL;
@@ -45,16 +51,7 @@ namespace ex_magasin {
 
             //Clients
             for (int i = 0; i < NB_CUSTOMER; i++) {
-                Customer currentCustomer = new Customer(
-                    //Position de départ centrée
-                    new PointF(Properties.Settings.Default.SIZE_FORM.Width / 2, Properties.Settings.Default.SIZE_FORM.Height / 2),
-                    //Vitesse aléatoire
-                    new PointF(rnd.Next(-V_CUSTOMER, V_CUSTOMER), rnd.Next(-V_CUSTOMER, V_CUSTOMER)),
-                    rnd.Next(TIME_MIN_TO_STAY, TIME_MAX_TO_STAY)
-                );
-                Paint += currentCustomer.Paint;
-                currentCustomer.TimeEnded += HandlerTimeEnded;
-                customers.Add(currentCustomer);
+                AddCustomer();
             }
             //Caisses
             //Position Y des caisses
@@ -73,6 +70,22 @@ namespace ex_magasin {
                 currentCheckout.CustomerDoneAtCheckout += HandlerCustomerDoneAtCheckout;
                 checkouts.Add(currentCheckout);
             }
+        }
+
+        /// <summary>
+        /// Ajouter un client
+        /// </summary>
+        private void AddCustomer() {
+            Customer currentCustomer = new Customer(
+                    //Position de départ centrée
+                    new PointF(Properties.Settings.Default.SIZE_FORM.Width / 2, Properties.Settings.Default.SIZE_FORM.Height / 2),
+                    //Vitesse aléatoire
+                    new PointF(rnd.Next(-V_CUSTOMER, V_CUSTOMER), rnd.Next(-V_CUSTOMER, V_CUSTOMER)),
+                    rnd.Next(TIME_MIN_TO_STAY, TIME_MAX_TO_STAY)
+                );
+            Paint += currentCustomer.Paint;
+            currentCustomer.TimeEnded += HandlerTimeEnded;
+            customers.Add(currentCustomer);
         }
 
         /// <summary>
@@ -101,6 +114,11 @@ namespace ex_magasin {
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
             Invalidate(true);
+            //Si le temps avant d'ajouter un client est écoulé
+            if(newClient.Elapsed.TotalSeconds / TIME_SECOND_BEFORE_ADD_CUSTOMER > 1) {
+                AddCustomer();
+                newClient.Restart();
+            }
         }
 
         /// <summary>
