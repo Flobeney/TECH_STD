@@ -93,7 +93,7 @@ namespace ex_magasin {
         /// <summary>
         /// Retourne l'emplacement dans la file d'attente en fonction de la position dans la file d'attente
         /// </summary>
-        /// <param name="place">Position dans la file d'attente</param>
+        /// <param name="c">CLient qui demande sa position dans la file d'attente</param>
         /// <returns>Emplacement dans la file d'attente</returns>
         public PointF GetNextWaitingLocation(Customer c) {
             return new PointF(
@@ -116,6 +116,8 @@ namespace ex_magasin {
         /// Pour chaque Tick du timer
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
+            //Savoir si actuellement la file d'attente de la caisse est pleine
+            bool isWaitingQueueFull = CustomersWaiting.Count == NB_MAX_CUSTOMER;
             //Indiquer au magasin que ce client a terminé
             OnCustomerDoneAtCheckout(new CustomerDoneAtCheckoutEventArgs(CustomersWaiting[0]));
             //Enlever le client de la liste
@@ -126,7 +128,8 @@ namespace ex_magasin {
             } else {
                 TmrWait.Enabled = false;
             }
-            if (!IsAtMax) {
+            //Si la file d'attente était pleine, indiquer que ce n'est plus le cas
+            if (isWaitingQueueFull) {
                 //Indiquer que la caisse a une/des place(s) disponible(s)
                 OnCheckoutAvailable(EventArgs.Empty);
             }

@@ -13,6 +13,7 @@ namespace ex_magasin {
         GOING_TO_CHECKOUT,
         WAITING_AT_CHECKOUT,
         AT_CHECKOUT,
+        WAITING_FOR_ANOTHER_CHECKOUT
     };
 
     /// <summary>
@@ -71,7 +72,7 @@ namespace ex_magasin {
                     res = NewLocation;
 
                     //Si le client fait son shopping ou attend l'ouverture d'une autre caisse
-                    if(StatusCustomer == Status.SHOPPING) {
+                    if(StatusCustomer == Status.SHOPPING || StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT) {
                         //Gestion des rebonds
                         HandleBounce(res);
                     }
@@ -198,7 +199,7 @@ namespace ex_magasin {
             //Couleur
             color = WAITING_ANOTHER_CHECKOUT_COLOR;
             //Status
-            StatusCustomer = Status.SHOPPING;
+            StatusCustomer = Status.WAITING_FOR_ANOTHER_CHECKOUT;
             //Vitesse et direction
             startLocation = NewLocation;
             speed = baseSpeed;

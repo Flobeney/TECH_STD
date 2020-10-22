@@ -28,7 +28,6 @@ namespace ex_magasin {
         Stopwatch newClient;
         Random rnd;
         List<Customer> customers;
-        List<Customer> customersWaitingForAnotherCheckout;
         List<Checkout> checkouts;
 
         /// <summary>
@@ -36,7 +35,6 @@ namespace ex_magasin {
         /// </summary>
         public Magasin() : base() {
             customers = new List<Customer>();
-            customersWaitingForAnotherCheckout = new List<Customer>();
             checkouts = new List<Checkout>();
             //Random
             rnd = new Random();
@@ -133,29 +131,17 @@ namespace ex_magasin {
         }
 
         /// <summary>
-        /// Le client n'a pas pu être ajouté à une caisse
-        /// </summary>
-        /// <param name="currentCustomer">Le client en question</param>
-        private void CheckoutFull(Customer currentCustomer) {
-            currentCustomer.CheckoutFull();
-            //Ajouter le client à la liste des clients en attente d'une autre caisse ouverte
-            if (!customersWaitingForAnotherCheckout.Contains(currentCustomer)) {
-                customersWaitingForAnotherCheckout.Add(currentCustomer);
-            }
-        }
-
-        /// <summary>
         /// Event lorsque le client a fini ses courses
         /// </summary>
         /// <param name="e">Argument</param>
         private void HandlerTimeEnded(object sender, EventArgs e) {
             //Récupérer le client
             Customer currentCustomer = sender as Customer;
-            //Récupérer une caisse ouverte
+            //Récupérer une caisse ouverte et avec de la place
             Checkout currentCheckout = checkouts.Find(checkout => checkout.IsOpen && !checkout.IsAtMax);
             //Pas de caisse disponible
             if(currentCheckout == null) {
-                CheckoutFull(currentCustomer);
+                currentCustomer.CheckoutFull();
             } else {
                 //Faire aller le client vers la caisse ouverte
                 currentCustomer.GoTo(currentCheckout);
@@ -183,7 +169,8 @@ namespace ex_magasin {
 
             //Parcourir les clients récupérés
             foreach (Customer currentCustomer in customersGoingToThatCheckout) {
-                CheckoutFull(currentCustomer);
+                //Indiquer que la caisse est pleine
+                currentCustomer.CheckoutFull();
             }
         }
 
@@ -194,6 +181,10 @@ namespace ex_magasin {
         private void HandlerCheckoutAvailable(object sender, EventArgs e) {
             Checkout currentCheckout = sender as Checkout;
 
+            //Récupérer les clients qui se dirigent vers cette caisse
+            List<Customer> customersWaitingForAnotherCheckout = customers.FindAll(customer => customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT);
+
+            //Parcourir les clients récupérés
             foreach (Customer currentCustomer in customersWaitingForAnotherCheckout) {
                 //Faire aller le client vers la caisse ouverte
                 currentCustomer.GoTo(currentCheckout);

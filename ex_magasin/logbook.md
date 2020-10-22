@@ -27,3 +27,5 @@
 * Affichage du temps d'attente restant sur le client lorsqu'il est à la caisse
 * Ajout d'un client après un certain temps
 * Indication qu'une caisse est pleine et ne peut accueillir plus de clients
+  * Les clients deviennent rouges et reprennent leurs vitesses d'avant
+  * Une fois qu'une caisse est de nouveau disponible, les clients se dirigent à nouveau vers la caisse
