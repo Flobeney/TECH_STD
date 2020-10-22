@@ -11,7 +11,8 @@ namespace ex_magasin {
     public enum Status {
         SHOPPING,
         GOING_TO_CHECKOUT,
-        WAITING_AT_CHECKOUT
+        WAITING_AT_CHECKOUT,
+        AT_CHECKOUT
     };
 
     /// <summary>
@@ -23,6 +24,8 @@ namespace ex_magasin {
         const int SPEED_GOTO_CHECKOUT = 5;
         readonly Brush BASE_COLOR = Brushes.Gray;
         readonly Brush TIME_END_COLOR = Brushes.Blue;
+        readonly Brush TEXT_COLOR = Brushes.Black;
+        readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
 
         //Gestionnaire d'événement
         public event EventHandler TimeEnded;
@@ -33,13 +36,13 @@ namespace ex_magasin {
         SizeF size;
         Stopwatch sw;
         Brush color;
-        Timer timeLeft;
+        Timer tmr;
         Checkout checkoutToGo;
         Status statusCustomer;
+        int timeToWait;
 
         //Propriétés
-        public int TimeToWait { get; private set; }
-        public int PosInWaitingQueue { get; set; }
+        public int TimeToWaitAtCheckout { get; private set; }
 
         //Propriétés calculées
         /// <summary>
@@ -60,7 +63,7 @@ namespace ex_magasin {
             get {
                 //Position qui sera retournée
                 PointF res;
-                if (statusCustomer == Status.WAITING_AT_CHECKOUT) {
+                if (statusCustomer == Status.WAITING_AT_CHECKOUT || statusCustomer == Status.AT_CHECKOUT) {
                     res = checkoutToGo.GetNextWaitingLocation(this);
                 } else {
                     res = NewLocation;
@@ -87,7 +90,7 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="pStartLocation">Position de départ</param>
         /// <param name="pSpeed">Vitesse</param>
-        public Customer(PointF pStartLocation, PointF pSpeed, int pTimeLeft) {
+        public Customer(PointF pStartLocation, PointF pSpeed, int pTmr) {
             //Nouveau Stopwatch
             sw = new Stopwatch();
             //Démarrer le Stopwatch
@@ -98,12 +101,13 @@ namespace ex_magasin {
             color = BASE_COLOR;
             size = Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER;
             statusCustomer = Status.SHOPPING;
-            //Timer pour le temps restant
-            TimeToWait = pTimeLeft * 1000;
-            timeLeft = new Timer();
-            timeLeft.Interval = TimeToWait;
-            timeLeft.Enabled = true;
-            timeLeft.Tick += new EventHandler(OnTick);
+            //Timer pour le temps à faire du shopping
+            timeToWait = pTmr;
+            TimeToWaitAtCheckout = pTmr / 2;
+            tmr = new Timer();
+            tmr.Interval = timeToWait * 1000;
+            tmr.Enabled = true;
+            tmr.Tick += new EventHandler(OnTick);
         }
 
         /// <summary>
@@ -156,10 +160,29 @@ namespace ex_magasin {
         }
 
         /// <summary>
-        /// Dessin du sprite
+        /// Dessin du client
         /// </summary>
         public void Paint(object sender, PaintEventArgs e) {
+            //Dessiner le client
             e.Graphics.FillEllipse(color, new RectangleF(CurrentLocation, size));
+            //Si le client est à la caisse, indiquer le temps d'attente restant
+            if(statusCustomer == Status.AT_CHECKOUT) {
+                e.Graphics.DrawString(
+                    $"{TimeToWaitAtCheckout - sw.Elapsed.Seconds}", 
+                    FONT_TEXT, TEXT_COLOR, 
+                    CurrentLocation.X + (size.Width / 4), CurrentLocation.Y + (size.Height / 4)
+                );
+            }
+        }
+
+        /// <summary>
+        /// Le client attend à la caisse
+        /// </summary>
+        public void CustomerWaitAtCheckout() {
+            statusCustomer = Status.AT_CHECKOUT;
+            tmr.Interval = 1000;
+            tmr.Enabled = true;
+            sw.Restart();
         }
 
         /// <summary>
@@ -220,10 +243,12 @@ namespace ex_magasin {
         /// Pour chaque Tick du timer
         /// </summary>
         protected void OnTick(object sender, EventArgs e) {
-            color = TIME_END_COLOR;
-            timeLeft.Enabled = false;
-            //Appeler l'event pour dire que le client a fini ses courses
-            OnTimeEnded(EventArgs.Empty);
+            if(statusCustomer != Status.AT_CHECKOUT) {
+                color = TIME_END_COLOR;
+                tmr.Enabled = false;
+                //Appeler l'event pour dire que le client a fini ses courses
+                OnTimeEnded(EventArgs.Empty);
+            }
         }
 
         /// <summary>

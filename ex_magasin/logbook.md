@@ -21,3 +21,7 @@
 * Les clients se dirigent donc au bout de la file d'attente, et s'empilent ensuite
 * Le client le plus proche de la caisse a un temps d'attente avant d'avoir fini à la caisse
 * Ensuite, il disparaît, et les clients du dessus descendent d'un cran (s'il en reste)
+
+## 22.10.2020
+
+* Affichage du temps d'attente restant sur le client lorsqu'il est à la caisse

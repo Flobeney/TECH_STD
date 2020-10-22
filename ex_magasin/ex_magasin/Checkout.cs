@@ -61,7 +61,6 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="customer">Le client</param>
         public void AddCustomer(Customer customer) {
-            customer.PosInWaitingQueue = CustomersWaiting.Count;
             CustomersWaiting.Add(customer);
             //Premier client
             if (CustomersWaiting.Count == 1) {
@@ -73,7 +72,8 @@ namespace ex_magasin {
         /// Mettre en route le timer pour le client en train d'attendre
         /// </summary>
         private void SetTimer() {
-            TmrWait.Interval = CustomersWaiting[0].TimeToWait / 2;
+            CustomersWaiting[0].CustomerWaitAtCheckout();
+            TmrWait.Interval = CustomersWaiting[0].TimeToWaitAtCheckout * 1000;
             TmrWait.Enabled = true;
         }
 
