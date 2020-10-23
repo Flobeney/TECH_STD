@@ -187,15 +187,18 @@ namespace ex_magasin {
                 checkoutOpenWithoutCustomer.Stop();
             }
             //Récupérer une caisse ouverte et avec de la place
-            Checkout currentCheckout = checkouts.Find(checkout => checkout.IsOpen && !checkout.IsAtMax);
+            List<Checkout> allCheckoutAvailable = checkouts.FindAll(checkout => checkout.IsOpen && !checkout.IsAtMax);
+            //Trier les caisses dans l'ordre du moins au plus de clients dans la file d'attente
+            allCheckoutAvailable.Sort();
+            
             //Pas de caisse disponible
-            if (currentCheckout == null) {
+            if (allCheckoutAvailable.Count == 0) {
                 currentCustomer.CheckoutFull();
                 //Commencer à mesurer la durée avec des clients sans caisse
                 waitingWithoutCheckoutOpen.Start();
             } else {
-                //Faire aller le client vers la caisse ouverte
-                currentCustomer.GoTo(currentCheckout);
+                //Faire aller le client vers la caisse ouverte la plus proche, avec le moins de clients dans la file d'attente
+                currentCustomer.GoTo(allCheckoutAvailable[0]);
             }
         }
 

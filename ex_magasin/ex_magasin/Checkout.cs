@@ -11,7 +11,7 @@ namespace ex_magasin {
     /// <summary>
     /// Représentation d'une caisse
     /// </summary>
-    class Checkout {
+    class Checkout : IComparable {
         //Constantes
         const int OFFEST_WAITING = 10;
         const int NB_MAX_CUSTOMER = 3;
@@ -31,7 +31,7 @@ namespace ex_magasin {
         private RectangleF CheckoutToDraw { get; set; }
         public Rectangle WaitingQueueToDraw { get; private set; }
         private Timer TmrWait { get; set; }
-        private List<Customer> CustomersWaiting { get; set; }
+        public List<Customer> CustomersWaiting { get; set; }
         //Propriétés calculées
         public bool IsAtMax {
             get {
@@ -165,6 +165,17 @@ namespace ex_magasin {
         protected void OnCheckoutAvailable(EventArgs e) {
             //Invoquer l'event si CheckoutAvailable n'est pas null
             CheckoutAvailable?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// Méthode de comparaison
+        /// </summary>
+        /// <param name="obj">Élément à comparer</param>
+        /// <returns>L'ordre des 2 éléments</returns>
+        public int CompareTo(object obj) {
+            Checkout other = obj as Checkout;
+
+            return CustomersWaiting.Count.CompareTo(other.CustomersWaiting.Count);
         }
     }
 }
