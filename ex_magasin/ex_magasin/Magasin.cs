@@ -115,7 +115,6 @@ namespace ex_magasin {
             Paint += currentCustomer.Paint;
             //Handler des events
             currentCustomer.TimeEnded += HandlerTimeEnded;
-            currentCustomer.CheckoutReached += HandlerCheckoutReached;
             //L'ajouter à la liste des clients
             customers.Add(currentCustomer);
         }
@@ -183,6 +182,10 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="currentCustomer">Le client</param>
         private void GoToCheckout(Customer currentCustomer) {
+            //S'il y a aucune caisse ouverte sans client
+            if (!AreCheckoutOpenWithoutCustomer && AreCustomersShoppingOrWaiting) {
+                checkoutOpenWithoutCustomer.Stop();
+            }
             //Récupérer une caisse ouverte et avec de la place
             Checkout currentCheckout = checkouts.Find(checkout => checkout.IsOpen && !checkout.IsAtMax);
             //Pas de caisse disponible
@@ -235,17 +238,6 @@ namespace ex_magasin {
             Customer currentCustomer = sender as Customer;
             //Le faire aller vers une caisse
             GoToCheckout(currentCustomer);
-        }
-
-        /// <summary>
-        /// Event lorsque le client a atteint une caisse
-        /// </summary>
-        /// <param name="e">Argument</param>
-        private void HandlerCheckoutReached(object sender, EventArgs e) {
-            //S'il y a aucune caisse ouverte sans client
-            if (!AreCheckoutOpenWithoutCustomer) {
-                checkoutOpenWithoutCustomer.Stop();
-            }
         }
 
         /// <summary>

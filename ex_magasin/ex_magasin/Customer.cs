@@ -31,7 +31,6 @@ namespace ex_magasin {
 
         //Gestionnaire d'événement
         public event EventHandler TimeEnded;
-        public event EventHandler CheckoutReached;
 
         //Champs
         PointF startLocation;
@@ -80,8 +79,6 @@ namespace ex_magasin {
 
                     //Si la caisse est atteinte
                     if (StatusCustomer == Status.GOING_TO_CHECKOUT && IsCheckoutReached(res)) {
-                        //Appeler l'event pour dire que le client a atteint une caisse
-                        OnCheckoutReached(EventArgs.Empty);
                         StatusCustomer = Status.WAITING_AT_CHECKOUT;
                         CheckoutToGo.AddCustomer(this);
                     }
@@ -281,15 +278,6 @@ namespace ex_magasin {
         protected void OnTimeEnded(EventArgs e) {
             //Invoquer l'event si TimeEnded n'est pas null
             TimeEnded?.Invoke(this, e);
-        }
-
-        /// <summary>
-        /// Invocation d'event lorsque le client a atteint une caisse
-        /// </summary>
-        /// <param name="e">Argument de l'event</param>
-        protected void OnCheckoutReached(EventArgs e) {
-            //Invoquer l'event si CheckoutReached n'est pas null
-            CheckoutReached?.Invoke(this, e);
         }
     }
 }
