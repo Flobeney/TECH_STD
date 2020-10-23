@@ -38,6 +38,11 @@ namespace ex_magasin {
                 return CustomersWaiting.Count >= NB_MAX_CUSTOMER;
             }
         }
+        public bool IsEmpty {
+            get {
+                return CustomersWaiting.Count == 0;
+            }
+        }
 
         /// <summary>
         /// Constructeur désigné

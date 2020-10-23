@@ -24,6 +24,7 @@ namespace ex_magasin {
         private const int TIME_MAX_TO_STAY = 20;
         private const int TIME_SECOND_BEFORE_ADD_CUSTOMER = 5;
         private const int TIME_SECOND_WAITING_WITHOUT_CHECKOUT_TOO_LONG = 5;
+        private const int TIME_SECOND_CHECKOUT_OPEN_WITHOUT_CUSTOMER = 5;
 
         //Champs
         Bitmap bmp = null;
@@ -31,14 +32,28 @@ namespace ex_magasin {
         Timer fps;
         Stopwatch newClient;
         Stopwatch waitingWithoutCheckoutOpen;
+        Stopwatch checkoutOpenWithoutCustomer;
         Random rnd;
         List<Customer> customers;
         List<Checkout> checkouts;
+
+        //Propriétés calculées
+        private bool AreCheckoutOpenWithoutCustomer {
+            get {
+                return checkouts.Find(checkout => checkout.IsOpen && checkout.IsEmpty) != null;
+            }
+        }
+        private bool AreCustomersShoppingOrWaiting {
+            get {
+                return customers.Find(customer => customer.StatusCustomer == Status.GOING_TO_CHECKOUT || customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT) != null;
+            }
+        }
 
         /// <summary>
         /// Constructeur
         /// </summary>
         public Magasin() : base() {
+            //Clients, caisses
             customers = new List<Customer>();
             checkouts = new List<Checkout>();
             //Random
@@ -47,6 +62,7 @@ namespace ex_magasin {
             newClient = new Stopwatch();
             newClient.Start();
             waitingWithoutCheckoutOpen = new Stopwatch();
+            checkoutOpenWithoutCustomer = new Stopwatch();
             //Timer
             fps = new Timer();
             fps.Interval = FPS_INTERVAL;
@@ -97,8 +113,9 @@ namespace ex_magasin {
             );
             //Affichage
             Paint += currentCustomer.Paint;
-            //Handler de l'event
+            //Handler des events
             currentCustomer.TimeEnded += HandlerTimeEnded;
+            currentCustomer.CheckoutReached += HandlerCheckoutReached;
             //L'ajouter à la liste des clients
             customers.Add(currentCustomer);
         }
@@ -144,6 +161,21 @@ namespace ex_magasin {
                 //Remettre le compteur à zéro
                 waitingWithoutCheckoutOpen.Reset();
             }
+            //S'il y a au moins une caisse ouverte sans client depuis trop longtemps
+            if(checkoutOpenWithoutCustomer.Elapsed.TotalSeconds >= TIME_SECOND_CHECKOUT_OPEN_WITHOUT_CUSTOMER) {
+                //Vérifier qu'il y a plus que 1 caisse actuellement ouverte (pour qu'il reste une caisse ouverte après fermeture de l'autre)
+                if(checkouts.FindAll(checkout => checkout.IsOpen).Count > 1) {
+                    //Fermer la dernière caisse vide
+                    Checkout currentCheckout = checkouts.FindLast(checkout => checkout.IsOpen && checkout.IsEmpty);
+                    if (currentCheckout != null) {
+                        currentCheckout.IsOpen = false;
+                        //Indiquer que la caisse n'est plus disponible
+                        CheckoutUnavailable(currentCheckout);
+                        //Remettre le compteur à zéro
+                        checkoutOpenWithoutCustomer.Reset();
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -180,32 +212,10 @@ namespace ex_magasin {
         }
 
         /// <summary>
-        /// Event lorsque le client a fini ses courses
+        /// Inidquer aux clients se dirigeant vers une caisse qu'elle est indisponible (pleine / fermée)
         /// </summary>
-        /// <param name="e">Argument</param>
-        private void HandlerTimeEnded(object sender, EventArgs e) {
-            //Récupérer le client
-            Customer currentCustomer = sender as Customer;
-            //Le faire aller vers une caisse
-            GoToCheckout(currentCustomer);
-        }
-
-        /// <summary>
-        /// Event lorsque le client a fini ses courses
-        /// </summary>
-        /// <param name="e">Argument</param>
-        private void HandlerCustomerDoneAtCheckout(object sender, CustomerDoneAtCheckoutEventArgs e) {
-            Paint -= e.customer.Paint;
-            customers.Remove(e.customer);
-        }
-
-        /// <summary>
-        /// Event lorsque la caisse est pleine
-        /// </summary>
-        /// <param name="e">Argument</param>
-        private void HandlerCheckoutFull(object sender, EventArgs e) {
-            Checkout currentCheckout = sender as Checkout;
-
+        /// <param name="currentCheckout">La caisse indisponible</param>
+        private void CheckoutUnavailable(Checkout currentCheckout) {
             //Récupérer les clients qui se dirigent vers cette caisse
             List<Customer> customersGoingToThatCheckout = customers.FindAll(customer => customer.CheckoutToGo == currentCheckout && customer.StatusCustomer == Status.GOING_TO_CHECKOUT);
 
@@ -217,13 +227,59 @@ namespace ex_magasin {
         }
 
         /// <summary>
+        /// Event lorsque le client a fini ses courses
+        /// </summary>
+        /// <param name="e">Argument</param>
+        private void HandlerTimeEnded(object sender, EventArgs e) {
+            //Récupérer le client
+            Customer currentCustomer = sender as Customer;
+            //Le faire aller vers une caisse
+            GoToCheckout(currentCustomer);
+        }
+
+        /// <summary>
+        /// Event lorsque le client a atteint une caisse
+        /// </summary>
+        /// <param name="e">Argument</param>
+        private void HandlerCheckoutReached(object sender, EventArgs e) {
+            //S'il y a aucune caisse ouverte sans client
+            if (!AreCheckoutOpenWithoutCustomer) {
+                checkoutOpenWithoutCustomer.Stop();
+            }
+        }
+
+        /// <summary>
+        /// Event lorsque le client a fini ses courses
+        /// </summary>
+        /// <param name="e">Argument</param>
+        private void HandlerCustomerDoneAtCheckout(object sender, CustomerDoneAtCheckoutEventArgs e) {
+            Paint -= e.customer.Paint;
+            customers.Remove(e.customer);
+
+            //S'il y a au moins une caisse ouverte sans client, et pas de clients voulant une caisse
+            if (AreCheckoutOpenWithoutCustomer && !AreCustomersShoppingOrWaiting) {
+                checkoutOpenWithoutCustomer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Event lorsque la caisse est pleine
+        /// </summary>
+        /// <param name="e">Argument</param>
+        private void HandlerCheckoutFull(object sender, EventArgs e) {
+            Checkout currentCheckout = sender as Checkout;
+
+            //Indiquer que la caisse n'est plus disponible
+            CheckoutUnavailable(currentCheckout);
+        }
+
+        /// <summary>
         /// Invocation d'event lorsque une/des place(s) dans la file d'attente d'une caisse est/sont disponible(s)
         /// </summary>
         /// <param name="e">Argument</param>
         private void HandlerCheckoutAvailable(object sender, EventArgs e) {
             //Stopper la mesure de temps
             waitingWithoutCheckoutOpen.Stop();
-            Console.WriteLine($"time elapsed {waitingWithoutCheckoutOpen.Elapsed.TotalSeconds}");
 
             Checkout currentCheckout = sender as Checkout;
 

@@ -34,4 +34,4 @@
 
 * Lorsqu'un client se dirige vers une caisse et que celle-ci est pleine, le client va essayer de se diriger vers une autre caisse (s'il en reste de disponible)
 * Après un certain temps d'attente avec aucune caisse disponible, une nouvelle caisse s'ouvre
-
+* Fermeture d'une caisse si elle reste ouverte sans client trop longtemps
