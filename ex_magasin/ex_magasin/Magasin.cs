@@ -164,9 +164,12 @@ namespace ex_magasin {
             }
         }
 
-
+        /// <summary>
+        /// Indiquer qu'une caisse est disponible
+        /// </summary>
+        /// <param name="currentCheckout">La caisse disponible</param>
         private void CheckoutAvailable(Checkout currentCheckout) {
-            //Récupérer les clients qui se dirigent vers cette caisse
+            //Récupérer les clients qui attendent une caisse
             List<Customer> customersWaitingForAnotherCheckout = customers.FindAll(customer => customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT);
 
             //Parcourir les clients récupérés
@@ -224,6 +227,7 @@ namespace ex_magasin {
 
             Checkout currentCheckout = sender as Checkout;
 
+            //Indiquer que la caisse est disponible
             CheckoutAvailable(currentCheckout);
         }
     }
