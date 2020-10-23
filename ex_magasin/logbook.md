@@ -29,3 +29,9 @@
 * Indication qu'une caisse est pleine et ne peut accueillir plus de clients
   * Les clients deviennent rouges et reprennent leurs vitesses d'avant
   * Une fois qu'une caisse est de nouveau disponible, les clients se dirigent à nouveau vers la caisse
+
+## 23.10.2020
+
+* Lorsqu'un client se dirige vers une caisse et que celle-ci est pleine, le client va essayer de se diriger vers une autre caisse (s'il en reste de disponible)
+* Après un certain temps d'attente avec aucune caisse disponible, une nouvelle caisse s'ouvre
+

@@ -14,18 +14,23 @@ namespace ex_magasin {
     class Magasin : Control {
         //Constantes
         private const int FPS_INTERVAL = 8;
-        private const int NB_CUSTOMER = 15;
-        private const int V_CUSTOMER = 200;
+        //Clients, caisses
         private const int SPACE_BETWEEN_CHECKOUT = 15;
+        private const int NB_CHECKOUT_OPEN_AT_START = 2;
+        private const int NB_CUSTOMER_AT_START = 30;
+        private const int V_CUSTOMER = 200;
+        //Durées
         private const int TIME_MIN_TO_STAY = 5;
         private const int TIME_MAX_TO_STAY = 20;
         private const int TIME_SECOND_BEFORE_ADD_CUSTOMER = 5;
+        private const int TIME_SECOND_WAITING_WITHOUT_CHECKOUT_TOO_LONG = 5;
 
         //Champs
         Bitmap bmp = null;
         Graphics g = null;
         Timer fps;
         Stopwatch newClient;
+        Stopwatch waitingWithoutCheckoutOpen;
         Random rnd;
         List<Customer> customers;
         List<Checkout> checkouts;
@@ -41,6 +46,7 @@ namespace ex_magasin {
             //Stopwatch
             newClient = new Stopwatch();
             newClient.Start();
+            waitingWithoutCheckoutOpen = new Stopwatch();
             //Timer
             fps = new Timer();
             fps.Interval = FPS_INTERVAL;
@@ -50,7 +56,7 @@ namespace ex_magasin {
             DoubleBuffered = true;
 
             //Clients
-            for (int i = 0; i < NB_CUSTOMER; i++) {
+            for (int i = 0; i < NB_CUSTOMER_AT_START; i++) {
                 AddCustomer();
             }
             //Caisses
@@ -63,8 +69,8 @@ namespace ex_magasin {
                         10 + (Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
                         checkoutY
                     ),
-                    //Ouvrir la 1ère caisse
-                    i == 0
+                    //Ouvrir des caisses
+                    i < NB_CHECKOUT_OPEN_AT_START
                 );
                 //Affichage
                 Paint += currentCheckout.Paint;
@@ -128,6 +134,46 @@ namespace ex_magasin {
                 AddCustomer();
                 newClient.Restart();
             }
+            //Si les clients sans caisse attendent depuis trop longtemps
+            if(waitingWithoutCheckoutOpen.Elapsed.TotalSeconds >= TIME_SECOND_WAITING_WITHOUT_CHECKOUT_TOO_LONG) {
+                //Ouvrir la prochaine caisse
+                Checkout currentCheckout = checkouts.Find(checkout => !checkout.IsOpen);
+                currentCheckout.IsOpen = true;
+                //Indiquer qu'une nouvelle caisse est disponible
+                CheckoutAvailable(currentCheckout);
+                //Remettre le compteur à zéro
+                waitingWithoutCheckoutOpen.Reset();
+            }
+        }
+
+        /// <summary>
+        /// Faire aller le client vers une caisse
+        /// </summary>
+        /// <param name="currentCustomer">Le client</param>
+        private void GoToCheckout(Customer currentCustomer) {
+            //Récupérer une caisse ouverte et avec de la place
+            Checkout currentCheckout = checkouts.Find(checkout => checkout.IsOpen && !checkout.IsAtMax);
+            //Pas de caisse disponible
+            if (currentCheckout == null) {
+                currentCustomer.CheckoutFull();
+                //Commencer à mesurer la durée avec des clients sans caisse
+                waitingWithoutCheckoutOpen.Start();
+            } else {
+                //Faire aller le client vers la caisse ouverte
+                currentCustomer.GoTo(currentCheckout);
+            }
+        }
+
+
+        private void CheckoutAvailable(Checkout currentCheckout) {
+            //Récupérer les clients qui se dirigent vers cette caisse
+            List<Customer> customersWaitingForAnotherCheckout = customers.FindAll(customer => customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT);
+
+            //Parcourir les clients récupérés
+            foreach (Customer currentCustomer in customersWaitingForAnotherCheckout) {
+                //Faire aller le client vers la caisse ouverte
+                currentCustomer.GoTo(currentCheckout);
+            }
         }
 
         /// <summary>
@@ -137,15 +183,8 @@ namespace ex_magasin {
         private void HandlerTimeEnded(object sender, EventArgs e) {
             //Récupérer le client
             Customer currentCustomer = sender as Customer;
-            //Récupérer une caisse ouverte et avec de la place
-            Checkout currentCheckout = checkouts.Find(checkout => checkout.IsOpen && !checkout.IsAtMax);
-            //Pas de caisse disponible
-            if(currentCheckout == null) {
-                currentCustomer.CheckoutFull();
-            } else {
-                //Faire aller le client vers la caisse ouverte
-                currentCustomer.GoTo(currentCheckout);
-            }
+            //Le faire aller vers une caisse
+            GoToCheckout(currentCustomer);
         }
 
         /// <summary>
@@ -169,8 +208,8 @@ namespace ex_magasin {
 
             //Parcourir les clients récupérés
             foreach (Customer currentCustomer in customersGoingToThatCheckout) {
-                //Indiquer que la caisse est pleine
-                currentCustomer.CheckoutFull();
+                //Le faire aller vers une autre caisse
+                GoToCheckout(currentCustomer);
             }
         }
 
@@ -179,16 +218,13 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="e">Argument</param>
         private void HandlerCheckoutAvailable(object sender, EventArgs e) {
+            //Stopper la mesure de temps
+            waitingWithoutCheckoutOpen.Stop();
+            Console.WriteLine($"time elapsed {waitingWithoutCheckoutOpen.Elapsed.TotalSeconds}");
+
             Checkout currentCheckout = sender as Checkout;
 
-            //Récupérer les clients qui se dirigent vers cette caisse
-            List<Customer> customersWaitingForAnotherCheckout = customers.FindAll(customer => customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT);
-
-            //Parcourir les clients récupérés
-            foreach (Customer currentCustomer in customersWaitingForAnotherCheckout) {
-                //Faire aller le client vers la caisse ouverte
-                currentCustomer.GoTo(currentCheckout);
-            }
+            CheckoutAvailable(currentCheckout);
         }
     }
 }
