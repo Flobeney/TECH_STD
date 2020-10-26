@@ -1,5 +1,7 @@
 # Journal de bord
 
+[Lien du GitHub](https://github.com/Flobeney/TECH_STD/tree/master/ex_magasin)
+
 ## 05.10.2020 - début du projet
 
 * Choix du langage : C#
