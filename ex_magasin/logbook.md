@@ -36,3 +36,7 @@
 * Après un certain temps d'attente avec aucune caisse disponible, une nouvelle caisse s'ouvre
 * Fermeture d'une caisse si elle reste ouverte sans client trop longtemps
 * Les clients ayant besoin d'une caisse se dirigent vers la caisse ayant le moins de clients dans sa file d'attente
+
+## 26.10.2020
+
+* Refactorisation, commentaire du code

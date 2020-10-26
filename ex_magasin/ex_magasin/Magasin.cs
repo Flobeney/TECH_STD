@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ex_magasin {
@@ -16,6 +13,7 @@ namespace ex_magasin {
         private const int FPS_INTERVAL = 8;
         //Clients, caisses
         private const int SPACE_BETWEEN_CHECKOUT = 15;
+        private const int OFFSET_CHECKOUT = 10;
         private const int NB_CHECKOUT_OPEN_AT_START = 2;
         private const int NB_CUSTOMER_AT_START = 30;
         private const int V_CUSTOMER = 200;
@@ -25,17 +23,22 @@ namespace ex_magasin {
         private const int TIME_SECOND_BEFORE_ADD_CUSTOMER = 5;
         private const int TIME_SECOND_WAITING_WITHOUT_CHECKOUT_TOO_LONG = 5;
         private const int TIME_SECOND_CHECKOUT_OPEN_WITHOUT_CUSTOMER = 5;
+        //Dessin
+        private readonly Brush COLOR_TEXT = Brushes.Black;
+        private readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
+        private readonly PointF POS_TEXT = new PointF(5, 5);
+        private readonly Point POS_IMG = new Point(0, 0);
 
         //Champs
-        Bitmap bmp = null;
-        Graphics g = null;
-        Timer fps;
-        Stopwatch newClient;
-        Stopwatch waitingWithoutCheckoutOpen;
-        Stopwatch checkoutOpenWithoutCustomer;
-        Random rnd;
-        List<Customer> customers;
-        List<Checkout> checkouts;
+        private Bitmap bmp;
+        private Graphics g;
+        private Timer fps;
+        private Stopwatch newClient;
+        private Stopwatch waitingWithoutCheckoutOpen;
+        private Stopwatch checkoutOpenWithoutCustomer;
+        private Random rnd;
+        private List<Customer> customers;
+        private List<Checkout> checkouts;
 
         //Propriétés calculées
         private bool AreCheckoutOpenWithoutCustomer {
@@ -53,6 +56,8 @@ namespace ex_magasin {
         /// Constructeur
         /// </summary>
         public Magasin() : base() {
+            bmp = null;
+            g = null;
             //Clients, caisses
             customers = new List<Customer>();
             checkouts = new List<Checkout>();
@@ -82,7 +87,7 @@ namespace ex_magasin {
             for (int i = 0; i < (Properties.Settings.Default.SIZE_FORM.Width - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width) / Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width; i++) {
                 Checkout currentCheckout = new Checkout(
                     new PointF(
-                        10 + (Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
+                        OFFSET_CHECKOUT + (Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Width * i) + (SPACE_BETWEEN_CHECKOUT * i), 
                         checkoutY
                     ),
                     //Ouvrir des caisses
@@ -113,7 +118,7 @@ namespace ex_magasin {
             );
             //Affichage
             Paint += currentCustomer.Paint;
-            //Handler des events
+            //Handler de l'event
             currentCustomer.TimeEnded += HandlerTimeEnded;
             //L'ajouter à la liste des clients
             customers.Add(currentCustomer);
@@ -137,7 +142,9 @@ namespace ex_magasin {
             //Appeler l'event de base
             base.OnPaint(p);
             //Dessiner la nouvelle image sur l'écran
-            e.Graphics.DrawImage(bmp, new Point(0, 0));
+            e.Graphics.DrawImage(bmp, POS_IMG);
+            //Affichage des infos
+            e.Graphics.DrawString(ToString(), FONT_TEXT, COLOR_TEXT, POS_TEXT);
         }
 
         /// <summary>
@@ -146,8 +153,9 @@ namespace ex_magasin {
         protected void OnTick(object sender, EventArgs e) {
             Invalidate(true);
             //Si le temps avant d'ajouter un client est écoulé
-            if(newClient.Elapsed.TotalSeconds / TIME_SECOND_BEFORE_ADD_CUSTOMER > 1) {
+            if(newClient.Elapsed.TotalSeconds >= TIME_SECOND_BEFORE_ADD_CUSTOMER) {
                 AddCustomer();
+                //Remettre le compteur à zéro
                 newClient.Restart();
             }
             //Si les clients sans caisse attendent depuis trop longtemps
@@ -178,6 +186,18 @@ namespace ex_magasin {
         }
 
         /// <summary>
+        /// Override de la méthode ToString
+        /// </summary>
+        /// <returns>Représentation sous forme de texte de la classe</returns>
+        public override string ToString() {
+            return $"Nombre de clients: {customers.Count}\n" +
+                $"Nombre de clients cherchant une caisse: {customers.FindAll(customer => customer.StatusCustomer == Status.GOING_TO_CHECKOUT).Count}\n" +
+                $"Nombre de clients en attente d'une caisse: {customers.FindAll(customer => customer.StatusCustomer == Status.WAITING_FOR_ANOTHER_CHECKOUT).Count}\n" +
+                $"Temps avant l'ouverture d'une nouvelle caisse: {Math.Round(TIME_SECOND_WAITING_WITHOUT_CHECKOUT_TOO_LONG - waitingWithoutCheckoutOpen.Elapsed.TotalSeconds, 1)}s\n" +
+                $"Temps avant la fermeture d'une caisse: {Math.Round(TIME_SECOND_CHECKOUT_OPEN_WITHOUT_CUSTOMER - checkoutOpenWithoutCustomer.Elapsed.TotalSeconds, 1)}s\n";
+        }
+
+        /// <summary>
         /// Faire aller le client vers une caisse
         /// </summary>
         /// <param name="currentCustomer">Le client</param>
@@ -197,7 +217,7 @@ namespace ex_magasin {
                 //Commencer à mesurer la durée avec des clients sans caisse
                 waitingWithoutCheckoutOpen.Start();
             } else {
-                //Faire aller le client vers la caisse ouverte la plus proche, avec le moins de clients dans la file d'attente
+                //Faire aller le client vers la caisse ouverte avec le moins de clients dans la file d'attente
                 currentCustomer.GoTo(allCheckoutAvailable[0]);
             }
         }
@@ -248,8 +268,8 @@ namespace ex_magasin {
         /// </summary>
         /// <param name="e">Argument</param>
         private void HandlerCustomerDoneAtCheckout(object sender, CustomerDoneAtCheckoutEventArgs e) {
-            Paint -= e.customer.Paint;
-            customers.Remove(e.customer);
+            Paint -= e.customerArgs.Paint;
+            customers.Remove(e.customerArgs);
 
             //S'il y a au moins une caisse ouverte sans client, et pas de clients voulant une caisse
             if (AreCheckoutOpenWithoutCustomer && !AreCustomersShoppingOrWaiting) {

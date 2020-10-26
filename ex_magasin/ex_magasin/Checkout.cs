@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Text;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ex_magasin {
@@ -13,24 +9,26 @@ namespace ex_magasin {
     /// </summary>
     class Checkout : IComparable {
         //Constantes
-        const int OFFEST_WAITING = 10;
-        const int NB_MAX_CUSTOMER = 3;
-        readonly Brush COLOR_CLOSE = Brushes.Red;
-        readonly Brush COLOR_OPEN = Brushes.Green;
-        readonly Pen COLOR_WAITING_QUEUE = Pens.Black;
+        private const int OFFEST_WAITING = 10;
+        private const int NB_MAX_CUSTOMER = 3;
+        private readonly Brush COLOR_CLOSE = Brushes.Red;
+        private readonly Brush COLOR_OPEN = Brushes.Green;
+        private readonly Pen COLOR_WAITING_QUEUE = Pens.Black;
 
         //Gestionnaire d'événement
         public event EventHandler<CustomerDoneAtCheckoutEventArgs> CustomerDoneAtCheckout;
         public event EventHandler CheckoutFull;
         public event EventHandler CheckoutAvailable;
 
+        //Champs
+        private PointF location;
+        private RectangleF checkoutToDraw;
+        private Timer tmrWait;
+
         //Propriétés
-        private PointF Location { get; set; }
         public Point LocationWaitingQueue { get; set; }
         public bool IsOpen { get; set; }
-        private RectangleF CheckoutToDraw { get; set; }
         public Rectangle WaitingQueueToDraw { get; private set; }
-        private Timer TmrWait { get; set; }
         public List<Customer> CustomersWaiting { get; set; }
         //Propriétés calculées
         public bool IsAtMax {
@@ -50,14 +48,14 @@ namespace ex_magasin {
         /// <param name="pLocation">Position</param>
         public Checkout(PointF pLocation, bool pIsOpen = false) {
             CustomersWaiting = new List<Customer>();
-            Location = pLocation;
+            location = pLocation;
             IsOpen = pIsOpen;
             //Dessin de la caisse
-            CheckoutToDraw = new RectangleF(Location, Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER);
+            checkoutToDraw = new RectangleF(location, Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER);
             //Emplacement de la file d'attente
             LocationWaitingQueue = new Point(
-                (int)Location.X,
-                (int)Location.Y - Properties.Settings.Default.SIZE_WAITING_QUEUE.Height
+                (int)location.X,
+                (int)location.Y - Properties.Settings.Default.SIZE_WAITING_QUEUE.Height
             );
             //Dessin de la file d'attente
             WaitingQueueToDraw = new Rectangle(
@@ -65,9 +63,9 @@ namespace ex_magasin {
                 Properties.Settings.Default.SIZE_WAITING_QUEUE
             );
             //Timer pour le temps d'attente
-            TmrWait = new Timer();
-            TmrWait.Tick += new EventHandler(OnTick);
-            TmrWait.Enabled = false;
+            tmrWait = new Timer();
+            tmrWait.Tick += new EventHandler(OnTick);
+            tmrWait.Enabled = false;
         }
 
         /// <summary>
@@ -91,8 +89,8 @@ namespace ex_magasin {
         /// </summary>
         private void SetTimer() {
             CustomersWaiting[0].CustomerWaitAtCheckout();
-            TmrWait.Interval = CustomersWaiting[0].TimeToWaitAtCheckout * 1000;
-            TmrWait.Enabled = true;
+            tmrWait.Interval = CustomersWaiting[0].TimeToWaitAtCheckout * 1000;
+            tmrWait.Enabled = true;
         }
 
         /// <summary>
@@ -102,8 +100,8 @@ namespace ex_magasin {
         /// <returns>Emplacement dans la file d'attente</returns>
         public PointF GetNextWaitingLocation(Customer c) {
             return new PointF(
-                Location.X,
-                Location.Y - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height - (CustomersWaiting.IndexOf(c) * (OFFEST_WAITING + Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height))
+                location.X,
+                location.Y - Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height - (CustomersWaiting.IndexOf(c) * (OFFEST_WAITING + Properties.Settings.Default.SIZE_CHECKOUT_CUSTOMER.Height))
             );
         }
 
@@ -112,7 +110,7 @@ namespace ex_magasin {
         /// </summary>
         public void Paint(object sender, PaintEventArgs e) {
             //Caisse
-            e.Graphics.FillRectangle(IsOpen ? COLOR_OPEN : COLOR_CLOSE, CheckoutToDraw);
+            e.Graphics.FillRectangle(IsOpen ? COLOR_OPEN : COLOR_CLOSE, checkoutToDraw);
             //File d'attente
             e.Graphics.DrawRectangle(COLOR_WAITING_QUEUE, WaitingQueueToDraw);
         }
@@ -131,7 +129,7 @@ namespace ex_magasin {
             if(CustomersWaiting.Count > 0) {
                 SetTimer();
             } else {
-                TmrWait.Enabled = false;
+                tmrWait.Enabled = false;
             }
             //Si la file d'attente était pleine, indiquer que ce n'est plus le cas
             if (isWaitingQueueFull) {

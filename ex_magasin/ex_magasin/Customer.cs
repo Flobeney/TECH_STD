@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ex_magasin {
+    /// <summary>
+    /// Enumération du statut possible pour le client
+    /// </summary>
     public enum Status {
         SHOPPING,
         GOING_TO_CHECKOUT,
@@ -21,26 +20,26 @@ namespace ex_magasin {
     /// </summary>
     class Customer {
         //Constantes
-        const int OFFSET_CLIENT = 5;
-        const int SPEED_GOTO_CHECKOUT = 5;
-        readonly Brush BASE_COLOR = Brushes.Gray;
-        readonly Brush TIME_END_COLOR = Brushes.Blue;
-        readonly Brush WAITING_ANOTHER_CHECKOUT_COLOR = Brushes.Red;
-        readonly Brush TEXT_COLOR = Brushes.Black;
-        readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
+        private const int OFFSET_CLIENT = 5;
+        private const int SPEED_GOTO_CHECKOUT = 5;
+        private readonly Brush BASE_COLOR = Brushes.Gray;
+        private readonly Brush TIME_END_COLOR = Brushes.Blue;
+        private readonly Brush WAITING_ANOTHER_CHECKOUT_COLOR = Brushes.Red;
+        private readonly Brush TEXT_COLOR = Brushes.Black;
+        private readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
 
         //Gestionnaire d'événement
         public event EventHandler TimeEnded;
 
         //Champs
-        PointF startLocation;
-        PointF speed;
-        PointF baseSpeed;
-        SizeF size;
-        Stopwatch sw;
-        Brush color;
-        Timer tmr;
-        int timeToWait;
+        private PointF startLocation;
+        private PointF speed;
+        private PointF baseSpeed;
+        private SizeF size;
+        private Stopwatch sw;
+        private Brush color;
+        private Timer tmr;
+        private int timeToWait;
 
         //Propriétés
         public int TimeToWaitAtCheckout { get; private set; }
@@ -51,7 +50,7 @@ namespace ex_magasin {
         /// <summary>
         /// Position du client en fonction du temps écoulé
         /// </summary>
-        PointF NewLocation {
+        private PointF NewLocation {
             get {
                 return new PointF(
                     (speed.X / 1000 * (float)sw.Elapsed.TotalMilliseconds) + startLocation.X,
@@ -62,7 +61,7 @@ namespace ex_magasin {
         /// <summary>
         /// Position du client en tenant compte des rebonds sur les bords
         /// </summary>
-        PointF CurrentLocation {
+        private PointF CurrentLocation {
             get {
                 //Position qui sera retournée
                 PointF res;
@@ -109,6 +108,7 @@ namespace ex_magasin {
             timeToWait = pTmr;
             TimeToWaitAtCheckout = pTmr / 2;
             tmr = new Timer();
+            //timeToWait est en secondes, le convertir en ms
             tmr.Interval = timeToWait * 1000;
             tmr.Enabled = true;
             tmr.Tick += new EventHandler(OnTick);
@@ -185,6 +185,7 @@ namespace ex_magasin {
         /// </summary>
         public void CustomerWaitAtCheckout() {
             StatusCustomer = Status.AT_CHECKOUT;
+            //Timer pour le temps d'attente en caisse
             tmr.Interval = 1000;
             tmr.Enabled = true;
             sw.Restart();

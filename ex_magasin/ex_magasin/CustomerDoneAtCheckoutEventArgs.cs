@@ -1,14 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ex_magasin {
+    /// <summary>
+    /// Arguments lorsque l'événement CustomerDoneAtCheckout est déclenché
+    /// </summary>
     class CustomerDoneAtCheckoutEventArgs : EventArgs {
-        public Customer customer { get; set; }
+        //Propriétés
+        public Customer customerArgs { get; set; }
+
+        /// <summary>
+        /// Constructeur
+        /// </summary>
+        /// <param name="c">Client</param>
         public CustomerDoneAtCheckoutEventArgs(Customer c) {
-            customer = c;
+            customerArgs = c;
         }
     }
 }
