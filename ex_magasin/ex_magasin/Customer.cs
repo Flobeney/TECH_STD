@@ -25,7 +25,7 @@ namespace ex_magasin {
         private readonly Brush BASE_COLOR = Brushes.Gray;
         private readonly Brush TIME_END_COLOR = Brushes.Blue;
         private readonly Brush WAITING_ANOTHER_CHECKOUT_COLOR = Brushes.Red;
-        private readonly Brush TEXT_COLOR = Brushes.Black;
+        private readonly Brush COLOR_TEXT = Brushes.Black;
         private readonly Font FONT_TEXT = new Font(FontFamily.GenericSansSerif, 12);
 
         //Gestionnaire d'événement
@@ -174,7 +174,7 @@ namespace ex_magasin {
             if(StatusCustomer == Status.AT_CHECKOUT) {
                 e.Graphics.DrawString(
                     $"{TimeToWaitAtCheckout - sw.Elapsed.Seconds}", 
-                    FONT_TEXT, TEXT_COLOR, 
+                    FONT_TEXT, COLOR_TEXT, 
                     CurrentLocation.X + (size.Width / 4), CurrentLocation.Y + (size.Height / 4)
                 );
             }
