@@ -46,8 +46,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SortBigDataOld.cs" />
     <Compile Include="SortBigData.cs" />
+    <Compile Include="SortFile.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -9,9 +10,10 @@ using System.Threading.Tasks;
 namespace sort_big_data {
     class Program {
         //Constantes
-        const string FILENAME = "file.txt";
+        const string FILENAME = "file100mb.txt";
         //const string FILENAME = "lorem5.txt";
-        const int NB_LINES_TO_READ = 100000;
+        //const int NB_LINES_TO_READ = 100_000;
+        const int NB_LINES_TO_READ = 10_000;
 
         //Champs
         static SortBigData sort;
@@ -20,8 +22,11 @@ namespace sort_big_data {
         static string[] linesRead;
         static int lines;
         static List<Task> tasks;
+        static Stopwatch sw;
 
         static void Main(string[] args) {
+            sw = new Stopwatch();
+            sw.Start();
             Console.WriteLine(DateTime.Now);
             //Vérification de l'existence du fichier
             if (!File.Exists(FILENAME)) {
@@ -39,38 +44,34 @@ namespace sort_big_data {
             //Lecture du fichier
             using (file = new StreamReader(FILENAME)) {
                 while (currentLine != null) {
-                    Console.WriteLine($"Begin read {NB_LINES_TO_READ} lines");
                     //Lire NB_LINES_TO_READ
-                    for (int i = 0; i < NB_LINES_TO_READ && (currentLine = file.ReadLine()) != null; i++) {
+                    int i;
+                    for (i = 0; i < NB_LINES_TO_READ && (currentLine = file.ReadLine()) != null; i++) {
                         linesRead[i] = currentLine;
                         lines++;
                     }
+                    //S'il n'y avait plus de lignes à lire, couper le tableau où ça c'est arrêté
+                    if(i < NB_LINES_TO_READ) {
+                        linesRead = linesRead.Take(i).ToArray();
+                    }
                     tasks.Add(sort.AddLines(linesRead));
                 }
-                 
-                //Lecture d'une ligne
-                //while ((currentLine = file.ReadLine()) != null) {
-                //    sort.addline(currentline);
-                //}
             }
 
             //Attendre que toutes les lignes soient ajoutées dans leur fichier respectif
             Task.WaitAll(tasks.ToArray());
-            //while (tasks.Count > 0) {
-            //    Task finished = await Task.WhenAny(tasks);
-            //    Console.WriteLine("finished");
-            //    tasks.Remove(finished);
-
-            //}
 
             Console.WriteLine($"File readed : {lines} lignes");
+            Console.WriteLine($"Start merging files at {DateTime.Now}");
 
-            //Trier les mots dans les fichiers
-            sort.SortAllFiles();
+            //Fusionner les fichiers
+            sort.MergeFiles();
 
-            //Écrire dans le fichier de résultat
-            sort.WriteResFile();
+            Console.WriteLine("End merging files");
+            sw.Start();
             Console.WriteLine(DateTime.Now);
+            Console.WriteLine($"Traitement effectué en {sw.ElapsedMilliseconds}ms");
+            Console.ReadKey();
         }
 
     }

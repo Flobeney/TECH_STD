@@ -13,10 +13,7 @@ namespace sort_big_data {
         private const char WORD_SEPARATOR = ' ';
 
         //Champs
-        private char[] alphabet;
-        private List<FileStream> files;
-        private List<StreamReader> readers;
-        private FileStream fileRes;
+        private Dictionary<int, SortFile> sortedFiles;
         private UTF8Encoding encoding;
         private object objLock;
 
@@ -34,149 +31,177 @@ namespace sort_big_data {
             }
             Directory.CreateDirectory(FOLDER_DATA);
             //Initialisation
-            alphabet = "abcdefghijklmnopqrstuvwxyz".ToCharArray();
-            files = new List<FileStream>();
-            readers = new List<StreamReader>();
-            fileRes = File.Create(FILE_RES);
+            sortedFiles = new Dictionary<int, SortFile>();
             encoding = new UTF8Encoding();
             objLock = new object();
-
-            Console.WriteLine("Create");
         }
 
         /// <summary>
         /// Finalizer
         /// </summary>
-        //~SortBigData() {
-        //    Console.WriteLine("Delete");
-        //    //Pour chaque lettres
-        //    for (int nb = 0; nb < files.Count; nb++) {
-        //        Console.WriteLine(nb);
-        //        //Fermer les Streams
-        //        files[nb].Close();
-        //        //Supprimer le fichier
-        //        File.Delete(GetFilename(nb));
-        //    }
-        //    //Dossier des fichiers de données
-        //    Directory.Delete(FOLDER_DATA);
-        //}
+        ~SortBigData() {
+            //Dossier des fichiers de données
+            Directory.Delete(FOLDER_DATA);
+        }
 
         /// <summary>
         /// Ajouter plusieurs lignes dans un fichier
         /// </summary>
         /// <param name="lines"></param>
         public async Task AddLines(string[] lines) {
-            Console.WriteLine($"Begin add lines to files {files.Count}.txt");
-            List<string>[] words = new List<string>[lines.Length];
+            //Console.WriteLine($"Begin add lines to files {files.Count}.txt");
+            string[][] words = new string[lines.Length][];
             string[] res = new string[lines.Length];
+            int key = sortedFiles.Count;
+
             //Créer le fichier
-            files.Add(
-                File.Create(
-                    GetFilename(files.Count)
-                )
-            );
-            int cpt = files.Count - 1;
-            readers.Add(new StreamReader(files[cpt]));
-            //Lancer l'exécution de la lecture du mot
+            AddFile(key);
+
+            //Lancer l'exécution de la lecture des lignes
             await Task.Run(() => {
-                Console.WriteLine($"start task on {cpt}.txt");
+                //Console.WriteLine($"start task on {key}.txt");
                 //Parcourir les lignes
                 Parallel.For(0, lines.Length, i => {
-                    words[i] = new List<string>();
                     res[i] = string.Empty;
                     //Séparer la ligne en mots
-                    words[i] = lines[i].Split(WORD_SEPARATOR).ToList();
-
-                    //Trier les mots
-                    words[i].Sort();
+                    words[i] = lines[i].Split(WORD_SEPARATOR);
 
                     //Ajouter les mots dans le résultat
                     foreach (string word in words[i]) {
                         res[i] += word + Environment.NewLine;
                     }
 
+                    //Empêcher l'écriture simultanée
                     lock (objLock) {
                         //Ajouter les mots au fichier correspondant
-                        Write(files[cpt], res[i]);
+                        Write(sortedFiles[key].fs, res[i]);
                     }
                 });
-                Console.WriteLine($"end task on {cpt}.txt");
+                //Console.WriteLine($"Finish adding lines on {key}.txt");
+                //Tri du fichier
+                SortFile(key);
+                //Indiquer que toutes les données ont été ajoutées au fichier
+                sortedFiles[key].AllDataAdded = true;
+                //Console.WriteLine($"end task on {key}.txt");
             });
-            Console.WriteLine($"Finish adding lines on {cpt}.txt");
         }
 
         /// <summary>
-        /// Ajout d'une ligne dans le(s) fichier(s) correspondant(s)
+        /// Fusion des fichiers
         /// </summary>
-        /// <param name="line">La ligne à ajouter</param>
-        public void AddLine(string line) {
-            //Séparer la ligne en mots
-            string[] words = line.Split(WORD_SEPARATOR);
+        public void MergeFiles() {
+            List<Task> merged = new List<Task>();
+            //Récupérer les clés
+            int[] keys = sortedFiles.Keys.ToArray();
 
-            //Parcourir les mots de la ligne
-            foreach (string word in words) {
-                //Ajouter le mot au fichier correspondant
-                Write(files[word.ToLower()[0]], word + Environment.NewLine);
+            //Si un seul fichier, pas besoin de merge, terminé
+            if (keys.Length != 1) {
+                int i, j;
+                for (i = 0, j = 0; i < keys.Length - 1; i += 2, j++) {
+                    merged.Add(MergeSortAsync(keys[i], keys[i + 1], keys.Length + j));
+                }
+                //Tant qu'il y a des tâches en attente
+                Task.WaitAll(merged.ToArray());
+                //Console.WriteLine("Finished waiting merge");
+                //Continuer à fusionner les fichiers
+                MergeFiles();
+            } else {
+                //Fermer les streams du fichier
+                sortedFiles[keys[0]].CloseFile();
+                //Le déplacer comme fichier de résultat
+                File.Move(GetFilename(keys[0]), FILE_RES);
             }
         }
 
         /// <summary>
-        /// Trier tous les fichiers
+        /// Tri fusion asynchrone de deux fichiers
         /// </summary>
-        public void SortAllFiles() {
-            Console.WriteLine("start sort");
-            Parallel.For(0, files.Count, i => {
-                SortFile(i);
-            });
-            Console.WriteLine("end sort");
-        }
+        /// <param name="keyFirstFile">Clé du premier fichier</param>
+        /// <param name="keySecondFile">Clé du second fichier</param>
+        /// <param name="key">Clé du fichier résultant</param>
+        /// <returns></returns>
+        private async Task MergeSortAsync(int keyFirstFile, int keySecondFile, int key) {
+            string[] currentLine = new string[2];
 
-        /// <summary>
-        /// Écrire le contenu des fichiers de données dans le fichier de résultat
-        /// </summary>
-        public void WriteResFile() {
-            for (int i = 0; i < readers.Count; i++) {
-                WriteFile(i);
-            }
-        }
-
-        /// <summary>
-        /// Écrire le contenu du fichier donné dans le fichier de résultat
-        /// </summary>
-        /// <param name="nb">Le chiffre du fichier de donnée</param>
-        private void WriteFile(int nb) {
-            string currentLine;
+            //Créer un nouveau fichier temporaire
+            AddFile(key);
 
             //Lire à partir du début
-            readers[nb].BaseStream.Position = 0;
-            readers[nb].DiscardBufferedData();
+            sortedFiles[keyFirstFile].sr.BaseStream.Position = 0;
+            sortedFiles[keySecondFile].sr.BaseStream.Position = 0;
+            sortedFiles[keyFirstFile].sr.DiscardBufferedData();
+            sortedFiles[keySecondFile].sr.DiscardBufferedData();
 
-            //Lire ligne par ligne
-            while ((currentLine = readers[nb].ReadLine()) != null) {
-                //Écrire dans le fichier de résultat
-                Write(fileRes, currentLine + Environment.NewLine);
-            }
+            //Lancer l'exécution de la fusion des fichiers
+            await Task.Run(() => {
+                //Console.WriteLine($"Start merge file {key}.txt with {keyFirstFile} and {keySecondFile}");
+                //Lire la 1ère ligne
+                currentLine[0] = sortedFiles[keyFirstFile].sr.ReadLine();
+                currentLine[1] = sortedFiles[keySecondFile].sr.ReadLine();
+                //Lire ligne par ligne
+                while (
+                    (currentLine[0] != null) &&
+                    (currentLine[1] != null)
+                    ) {
+
+                    //Savoir quel élément vient en 1er
+                    if(currentLine[0].CompareTo(currentLine[1]) < 0) {
+                        //currentLine[0] vient avant currentLine[1]
+                        //Écrire dans le fichier de résultat
+                        Write(sortedFiles[key].fs, currentLine[0] + Environment.NewLine);
+                        currentLine[0] = sortedFiles[keyFirstFile].sr.ReadLine();
+                    } else {
+                        //currentLine[0] vient après currentLine[1]
+                        //Écrire dans le fichier de résultat
+                        Write(sortedFiles[key].fs, currentLine[1] + Environment.NewLine);
+                        currentLine[1] = sortedFiles[keySecondFile].sr.ReadLine();
+                    }
+                }
+
+                //Écrire la fin du fichier qui n'a pas été lu
+                if (currentLine[0] == null) {
+                    if(currentLine[1] != null) {
+                        //Écrire l'élément déjà lu
+                        Write(sortedFiles[key].fs, currentLine[1] + Environment.NewLine);
+                        //Écrire le reste des éléments
+                        while ((currentLine[1] = sortedFiles[keySecondFile].sr.ReadLine()) != null) {
+                            Write(sortedFiles[key].fs, currentLine[1] + Environment.NewLine);
+                        }
+                    }
+                } else {
+                    //Écrire l'élément déjà lu
+                    Write(sortedFiles[key].fs, currentLine[0] + Environment.NewLine);
+                    //Écrire le reste des éléments
+                    while ((currentLine[0] = sortedFiles[keyFirstFile].sr.ReadLine()) != null) {
+                        Write(sortedFiles[key].fs, currentLine[0] + Environment.NewLine);
+                    }
+                }
+
+                //Supprimer les fichiers
+                DeleteFile(keyFirstFile);
+                DeleteFile(keySecondFile);
+
+                //Console.WriteLine($"End merge file {key}.txt");
+            });
         }
 
         /// <summary>
         /// Trier le fichier donné
         /// </summary>
-        /// <param name="nb">Le chiffre du fichier de donnée</param>
-        private void SortFile(int nb) {
-            Console.WriteLine($"start sort on {nb}.txt");
+        /// <param name="keyFile">La clé du fichier de donnée</param>
+        private void SortFile(int keyFile) {
+            //Console.WriteLine($"start sort on {keyFile}.txt");
             //Lecture des lignes
-            List<string> lines = ReadAllLines(nb);
+            List<string> lines = ReadAllLines(keyFile);
 
             //Tri des lignes
             lines.Sort();
 
             //Écrire par dessus le fichier
-            files[nb].Position = 0;
-            Write(files[nb], string.Join(Environment.NewLine, lines));
+            sortedFiles[keyFile].fs.Position = 0;
+            Write(sortedFiles[keyFile].fs, string.Join(Environment.NewLine, lines));
 
-            //Écrire dans le fichier de résultat
-            //Write(fileRes, string.Join(Environment.NewLine, lines));
-            Console.WriteLine($"end sort on {nb}.txt");
+            //Console.WriteLine($"end sort on {keyFile}.txt");
         }
 
         /// <summary>
@@ -195,18 +220,18 @@ namespace sort_big_data {
         /// <summary>
         /// Lecture de toutes les lignes d'un fichier
         /// </summary>
-        /// <param name="nb">Le chiffre du fichier de donnée</param>
+        /// <param name="keyFile">La clé du fichier de donnée</param>
         /// <returns>Le contenu d'un fichier</returns>
-        private List<string> ReadAllLines(int nb) {
+        private List<string> ReadAllLines(int keyFile) {
             List<string> res = new List<string>();
             string currentLine;
 
             //Lire à partir du début
-            readers[nb].BaseStream.Position = 0;
-            readers[nb].DiscardBufferedData();
+            sortedFiles[keyFile].sr.BaseStream.Position = 0;
+            sortedFiles[keyFile].sr.DiscardBufferedData();
 
             //Lire ligne par ligne
-            while ((currentLine = readers[nb].ReadLine()) != null) {
+            while ((currentLine = sortedFiles[keyFile].sr.ReadLine()) != null) {
                 res.Add(currentLine);
             }
 
@@ -216,19 +241,31 @@ namespace sort_big_data {
         /// <summary>
         /// Récupérer le nom complet d'un fichier de données
         /// </summary>
-        /// <param name="c">La lettre du fichier</param>
+        /// <param name="key">La clé du fichier</param>
         /// <returns>Le nom complet du fichier de données</returns>
-        private string GetFilename(char c) {
-            return $"{FOLDER_DATA}{c}.txt";
+        private string GetFilename(int key) {
+            return $"{FOLDER_DATA}{key}.txt";
         }
 
         /// <summary>
-        /// Récupérer le nom complet d'un fichier de données
+        /// Créer un fichier et crée les streams associés (FileStream, StreamReader)
         /// </summary>
-        /// <param name="nb">Le numéro du fichier</param>
-        /// <returns>Le nom complet du fichier de données</returns>
-        private string GetFilename(int nb) {
-            return $"{FOLDER_DATA}{nb}.txt";
+        /// <param name="key">La clé du fichier</param>
+        private void AddFile(int key) {
+            sortedFiles.Add(key, new SortFile(GetFilename(key)));
+        }
+
+        /// <summary>
+        /// Supprimer un fichier et ses streams associés (FileStream, StreamReader)
+        /// </summary>
+        /// <param name="key">La clé du fichier</param>
+        private void DeleteFile(int key) {
+            //Fermer les Streams
+            sortedFiles[key].CloseFile();
+            //Enlever l'instance
+            sortedFiles.Remove(key);
+            //Supprimer le fichier
+            File.Delete(GetFilename(key));
         }
     }
 }
