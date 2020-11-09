@@ -1,11 +1,11 @@
 # Imports
 import os
 import time
-from multiprocessing import Pool
+import multiprocessing as mp
 
 # Constantes
 FILENAME = 'file.txt'
-FILENAME = 'file100mb.txt'
+# FILENAME = 'file100mb.txt'
 FILENAME_RES = 'res.txt'
 DATA_FOLDER = 'data_' + str(time.time_ns()) + '/'
 BYTES_LIMIT = 5000
@@ -135,6 +135,8 @@ def mergeFileDisk(filenames, filenameRes):
 
 # Fonction principale
 def main():
+    print(mp.cpu_count())
+
     # Variables
     nbFiles = 0
     allLinesRead = False
