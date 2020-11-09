@@ -1,10 +1,7 @@
-# Imports
-import re
+# Import
 import time
 
 # Constantes
-# FILENAME = 'file500mb.txt'
-# FILENAME = 'file1gb.txt'
 FILENAME = 'lorem5.txt'
 FILENAME_RES = 'res.txt'
 NS_TO_MS = (10**6)
@@ -27,15 +24,13 @@ def main():
     # Début du programme
     print('Start at : ' + str(startTime) + 'ms')
 
-    # Ouvrir le fichier
+    # Ouvrir les fichiers
     file = open(FILENAME, 'r')
     fileRes = open(FILENAME_RES, 'w')
 
     # Lire toutes les lignes du fichier
     for line in file:
         # Séparer la ligne en mots
-        # wordsRead = re.findall(r'\w+', line)
-        # wordsRead = re.split(r'\s', line)
         wordsRead = line.split()
 
         # Parcourir les mots lus
