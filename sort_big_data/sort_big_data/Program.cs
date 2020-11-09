@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace sort_big_data {
     class Program {
         //Constantes
-        const string FILENAME = "file100mb.txt";
+        const string FILENAME = "file200mb.txt";
         //const string FILENAME = "lorem5.txt";
         //const int NB_LINES_TO_READ = 100_000;
         const int NB_LINES_TO_READ = 10_000;

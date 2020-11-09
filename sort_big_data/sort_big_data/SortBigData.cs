@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace sort_big_data {
         private const char WORD_SEPARATOR = ' ';
 
         //Champs
-        private Dictionary<int, SortFile> sortedFiles;
+        private ConcurrentDictionary<int, SortFile> sortedFiles;
         private UTF8Encoding encoding;
         private object objLock;
 
@@ -31,7 +32,7 @@ namespace sort_big_data {
             }
             Directory.CreateDirectory(FOLDER_DATA);
             //Initialisation
-            sortedFiles = new Dictionary<int, SortFile>();
+            sortedFiles = new ConcurrentDictionary<int, SortFile>();
             encoding = new UTF8Encoding();
             objLock = new object();
         }
@@ -252,7 +253,7 @@ namespace sort_big_data {
         /// </summary>
         /// <param name="key">La clé du fichier</param>
         private void AddFile(int key) {
-            sortedFiles.Add(key, new SortFile(GetFilename(key)));
+            sortedFiles.TryAdd(key, new SortFile(GetFilename(key)));
         }
 
         /// <summary>
@@ -263,7 +264,8 @@ namespace sort_big_data {
             //Fermer les Streams
             sortedFiles[key].CloseFile();
             //Enlever l'instance
-            sortedFiles.Remove(key);
+            SortFile removed;
+            sortedFiles.TryRemove(key, out removed);
             //Supprimer le fichier
             File.Delete(GetFilename(key));
         }
